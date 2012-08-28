@@ -34,4 +34,5 @@ class BaseHandler(tornado.web.RequestHandler):
     def render_default(self, template_name, **kwargs):
         # Set default variables and render template.
         kwargs['user'] = self.current_user
-        self.render(template_name, **kwargs)
+        self.render(template_name,
+                    apptitle=self.application.settings['apptitle'], **kwargs)
