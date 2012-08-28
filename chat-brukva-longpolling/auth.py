@@ -5,7 +5,6 @@ import tornado.web
 import tornado.escape
 
 # MongoDb modules.
-import pymongo
 from bson.objectid import ObjectId
 
 # Import application modules.
