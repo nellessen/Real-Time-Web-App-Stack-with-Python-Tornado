@@ -100,8 +100,13 @@ var updater = {
             updater.errorSleepTime = 500;
             window.setTimeout(updater.poll, 0);
         }).fail(function(jqXHR, textStatus) {
-            updater.errorSleepTime *= 2;
-            console.log("Poll error " + textStatus + "; sleeping for " + updater.errorSleepTime + " ms");
+            if (textStatus == 'timeout') {
+                console.log("Request timed out, sleeping for " + updater.errorSleepTime + " ms");
+            }
+            else {
+                updater.errorSleepTime *= 2;
+                console.log("Poll error " + textStatus + "; sleeping for " + updater.errorSleepTime + " ms");
+            }
             window.setTimeout(updater.poll, updater.errorSleepTime);
         });
     },

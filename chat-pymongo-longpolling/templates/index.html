@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Chat example with Tornado and PyMongo</title>
+    <title>{{ apptitle }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <!-- Twitter Bootstrap Styles -->
@@ -38,13 +38,13 @@
   
     <div class="navbar navbar-fixed-top">
       <div class="navbar-inner">
-        <div class="container-fluid">
+        <div class="container container-fluid">
           <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </a>
-          <a class="brand" href="/">Chat example with Tornado and PyMongo</a>
+          <a class="brand" href="/">{{ apptitle }}</a>
           <div class="btn-group pull-right">
             <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
               <i class="icon-user"></i> 
@@ -61,16 +61,18 @@
               {% if user %}<li><a href="/logout">Sign Out</a></li> {% end %}
             </ul>
           </div>
+          <!-- 
           <div class="nav-collapse">
             <ul class="nav">
               <li><a href="/">Home</a></li>
             </ul>
-          </div><!--/.nav-collapse -->
+          </div> --><!--/.nav-collapse -->
+          
         </div>
       </div>
     </div><!--/.navbar-fixed-top -->
     
-    <div class="container-fluid">
+    <div class="container container-fluid">
       <div class="row-fluid">
         <div class="span12">
           {% raw content %}

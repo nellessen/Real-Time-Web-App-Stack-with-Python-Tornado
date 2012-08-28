@@ -34,7 +34,8 @@ class MainHandler(BaseHandler):
         # Render Stored Messages
         content = self.render_string("messages.html", 
                                  messages=list(self.db.conversation.find()))
-        self.render_default("index.html", content=content, chat=1)
+        self.render_default("index.html", content=content,
+                            apptitle=self.application.settings['apptitle'], chat=1)
         
     
 
@@ -177,7 +178,9 @@ class Application(tornado.web.Application):
             xsrf_cookies= True,
             autoescape="xhtml_escape",
             # Set this to your desired database name.
-            db_name = 'chat'
+            db_name = 'chat',
+            # apptitle used as page title in the template.
+            apptitle = 'Chat example: Tornado, MongoDB, PyMongo, Longpolling'
         )
         
         # Call super constructor.
