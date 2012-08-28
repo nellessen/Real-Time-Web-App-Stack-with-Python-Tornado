@@ -1,0 +1,15 @@
+<div id="messsages">
+  {% for message in messages %}
+    {% module Template("message.html", message=message) %}
+  {% end %}
+</div>
+
+<form action="" method="post" class="form-inline" id="chat-input">
+  <div class="form-actions">
+    <div class="container container-fluid">
+      <input name="body" id="message-input" type="text"/>
+      <input class="btn btn-primary" type="submit" value="{{ _("Post") }}"/>
+      {% module xsrf_form_html() %}
+    </div>
+  </div>
+</form>
