@@ -172,7 +172,8 @@ class MessageHandler(BaseHandler):
         try:
             # Generate object id because asyncmongo does not return it.
             message["_id"] = ObjectId()
-            self.db.conversation.insert(message, callback=self.on_conversation_insert)
+            self.db.conversation.insert(message,
+                                        callback=self.on_conversation_insert)
             # Stringify _id.
             message["_id"] = str(message["_id"])
         except Exception, err:
@@ -260,8 +261,8 @@ class Application(tornado.web.Application):
         # insertion.
         if not "conversation" in self.sync_db.collection_names():
             logging.info("Creating capped collection 'conversation'")
-            pymongo.collection.Collection(self.sync_db, "conversation", create=True, 
-                                          capped=True, size=20480, max=50)
+            pymongo.collection.Collection(self.sync_db, "conversation",
+                                  create=True, capped=True, size=20480, max=50)
         
 
 
