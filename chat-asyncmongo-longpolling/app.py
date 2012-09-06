@@ -22,6 +22,9 @@ from base import BaseHandler
 from auth import LoginHandler
 from auth import LogoutHandler
 
+# Define port from command line parameter.
+tornado.options.define("port", default=8888, help="run on the given port", type=int)
+
 
 
 class MainHandler(BaseHandler):
@@ -276,7 +279,7 @@ def main():
     # Create an instance of the main application.
     application = Application()
     # Start application by listening to desired port and starting IOLoop.
-    application.listen(8888)
+    application.listen(tornado.options.options.port)
     tornado.ioloop.IOLoop.instance().start()
     
 

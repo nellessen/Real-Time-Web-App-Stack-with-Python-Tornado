@@ -25,6 +25,9 @@ from base import BaseHandler
 from auth import LoginHandler
 from auth import LogoutHandler
 
+# Define port from command line parameter.
+tornado.options.define("port", default=8888, help="run on the given port", type=int)
+
 
 
 class MainHandler(BaseHandler):
@@ -147,6 +150,8 @@ class MessageHandler(BaseHandler):
             #message['id'] = str(uuid.uuid4())
             # @todo: Validate input.
             message['body'] = tornado.escape.linkify(self.get_argument("body"))
+            # Uncomment this line to add the port number to the body.
+            message['body'] += " (over port " + str(tornado.options.options.port) + ")"
         except:
             # Send an error back to client.
             self.finish({'error': 1, 'textStatus': 'Bad input data'})
@@ -215,7 +220,6 @@ class Application(tornado.web.Application):
         
 
 
-
 def main():
     """
     Main function to run the chat application.
@@ -225,7 +229,7 @@ def main():
     # Create an instance of the main application.
     application = Application()
     # Start application by listening to desired port and starting IOLoop.
-    application.listen(8888)
+    application.listen(tornado.options.options.port)
     tornado.ioloop.IOLoop.instance().start()
     
 

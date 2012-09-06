@@ -26,11 +26,45 @@ class LoginHandler(BaseHandler, tornado.auth.GoogleMixin):
             # Set users attributes to ask for.
             ax_attrs = ['name', 'email', 'language', 'username']
             self.authenticate_redirect(ax_attrs=ax_attrs)
+        elif self.get_argument("start_direct_auth", None):
+            # Get form inputs.
+            try:
+                user = dict()
+                user["email"] = self.get_argument("email", default="")
+                user["name"] = self.get_argument("name", default="")
+            except:
+                # Send an error back to client.
+                content = "<p>There was an input error. Fill in all fields!</p>"
+                self.render_default("index.html", content=content)
+            # If user has not filled in all fields.
+            if not user["email"] or not user["name"]:
+                content = ('<h2>2. Direct Login</h2>' 
+                + '<p>Fill in both fields!</p>'
+                + '<form class="form-inline" action="/login" method="get"> '
+                + '<input type="hidden" name="start_direct_auth" value="1">'
+                + '<input type="text" name="name" placeholder="Your Name" value="' + str(user["name"]) + '"> '
+                + '<input type="text" name="email" placeholder="Your Email" value="' + str(user["email"]) + '"> '
+                + '<input type="submit" class="btn" value="Sign in">'
+                + '</form>')
+                self.render_default("index.html", content=content)
+            # All data given. Log user in!
+            else:
+                self._on_auth(user)
+            
         else:
-            content = ('<div class="page-header"><h1>Login</h1></div>'
+            # Logins.
+            content = '<div class="page-header"><h1>Login</h1></div>'
+            content += ('<h2>1. Google Login</h2>' 
             + '<form action="/login" method="get">' 
             + '<input type="hidden" name="start_google_oauth" value="1">'
             + '<input type="submit" class="btn" value="Sign in with Google">'
+            + '</form>')
+            content += ('<h2>2. Direct Login</h2>' 
+            + '<form class="form-inline" action="/login" method="get"> '
+            + '<input type="hidden" name="start_direct_auth" value="1">'
+            + '<input type="text" name="name" placeholder="Your Name"> '
+            + '<input type="text" name="email" placeholder="Your Email"> '
+            + '<input type="submit" class="btn" value="Sign in">'
             + '</form>')
             self.render_default("index.html", content=content)
 
@@ -51,9 +85,9 @@ class LoginHandler(BaseHandler, tornado.auth.GoogleMixin):
         # @todo: Validate user data.
         # Save user when authentication was successful.
         def on_user_find(result, user=user):
+            #@todo: We should check if email is given even though we can assume.
             if result == "null" or not result:
                 # If user does not exist, create a new entry.
-                user["email"] = str(ObjectId())
                 self.application.client.set("user:" + user["email"],
                                             tornado.escape.json_encode(user))
             else:
@@ -66,7 +100,7 @@ class LoginHandler(BaseHandler, tornado.auth.GoogleMixin):
                                             tornado.escape.json_encode(user))
             
             # Save user id in cookie.
-            self.set_secure_cookie("user", user["email"])
+            self.set_secure_cookie("user", str(user["email"]))
             self.redirect("/")
         
         dbuser = self.application.client.get("user:" + user["email"], 
