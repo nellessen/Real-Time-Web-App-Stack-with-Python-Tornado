@@ -42,7 +42,7 @@ class MainHandler(BaseHandler):
             self.redirect("/login")
             return
         # Retreive 50 latest messages.
-        self.application.client.lrange('conversation', 0, 50, 
+        self.application.client.lrange('conversation', -50, -1, 
                                        self.on_conversation_find)
         
     
