@@ -10,6 +10,9 @@ from bson.objectid import ObjectId
 # Import application modules.
 from base import BaseHandler
 
+# General modules.
+import logging
+
 
 
 class LoginHandler(BaseHandler, tornado.auth.GoogleMixin):
@@ -101,6 +104,7 @@ class LoginHandler(BaseHandler, tornado.auth.GoogleMixin):
             
             # Save user id in cookie.
             self.set_secure_cookie("user", str(user["email"]))
+            logging.warning("Cookie set")
             self.redirect("/")
         
         dbuser = self.application.client.get("user:" + user["email"], 

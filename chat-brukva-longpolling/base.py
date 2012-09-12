@@ -1,5 +1,4 @@
 # coding=UTF-8
-import tornado.web
 
 # Tornado modules.
 import tornado.web
@@ -9,6 +8,9 @@ from bson.objectid import ObjectId
 
 # Redis modules.
 import brukva
+
+# General modules.
+import logging
 
 
 class BaseHandler(tornado.web.RequestHandler):
@@ -30,11 +32,13 @@ class BaseHandler(tornado.web.RequestHandler):
         # Get the user_id by cookie.
         user_id = self.get_secure_cookie("user")
         if not user_id:
+            logging.warning("Cookie not found")
             callback(user=None)
             return
         # Define a callback for the db query.
         def query_callback(result):
             if result == "null" or not result:
+                logging.warning("User not found")
                 user = {}
             else:
                 user = tornado.escape.json_decode(result)

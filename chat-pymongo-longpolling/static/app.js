@@ -116,6 +116,7 @@ var updater = {
      */
     newMessages: function (data) {
         var messages = data.messages;
+        if(messages.length == 0) return;
         updater.cursor = messages[messages.length - 1]._id;
         console.log(messages.length + "new messages, cursor: " + updater.cursor);
         for (var i = 0; i < messages.length; i++) {

@@ -13,8 +13,6 @@ import tornado.options
 import tornado.escape
 
 # MongoDb modules.
-import pymongo
-import asyncmongo
 from bson.objectid import ObjectId
 
 # Redis modules.
