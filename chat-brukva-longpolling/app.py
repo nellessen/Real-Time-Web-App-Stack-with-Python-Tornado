@@ -73,6 +73,7 @@ class MessageHandler(BaseHandler):
         Expects to send a body like this:
         {'cursor': 'MessageID of the latest message received'}
         """
+        logging.info("Starting GET")
         # Check authentication.
         self._get_current_user(callback=self.get_on_auth)
         
@@ -81,11 +82,13 @@ class MessageHandler(BaseHandler):
         """
         Callback fot checking auth in self.get().
         """
+        logging.info("Authorized GET")
         if not user:
             self.finish({'error': 1, 'textStatus': 'unauthorized'})
             return;
         
         # Subscribe to conversation channel.
+        self.new_message_send = False
         self.client = brukva.Client()
         self.client.connect()
         self.client.subscribe('conversation')
@@ -95,6 +98,13 @@ class MessageHandler(BaseHandler):
         
         
     def on_new_messages(self, message):
+        logging.info("on_new_messages GET")
+        # Aboard if fired twice.
+        if self.new_message_send:
+            return;
+        self.new_message_send = True
+        logging.info("NEW MESSAGE")
+        logging.info(message)
         """
         Callback called by get() when new message is available.
         message - a new message.
@@ -111,14 +121,29 @@ class MessageHandler(BaseHandler):
         self.finish(dict(messages=[tornado.escape.json_decode(message.body)]))
         
 
+    def on_finished(self):
+        """
+        In tornado 2.2 this will always be called at the end of a request.
+        This should replace on_connection_close cleanup work.
+        @todo: Update when moving to tornado 2.2
+        """
+        logging.info("REQUEST FINISHED")
+        #self.client.disconnect()
+        
+    
     def on_connection_close(self):
         """
-        Called when connection closed.
+        Called when connection closed by client.
         """
         # Remove waiter.
-        logging.info("Removed one waiter")
-        self.client.unsubscribe('conversation')
-        self.client.disconnect()
+        logging.info("CONNECTION CLOSED")
+        if hasattr(self, 'client'):
+            self.client.unsubscribe('conversation')
+            # @todo: We should disconnect but the problem seems to be that the
+            # unsubscribe raises a message to all subscribers including the one
+            # unsubscribing. Since the disconnection will be first brukva.
+            # Same above!
+            self.client.disconnect()
         
     
     @tornado.web.asynchronous
@@ -172,6 +197,10 @@ class MessageHandler(BaseHandler):
             return;
         
         # Send message to indicate a successful operation.
+        # Closed client connection
+        if self.request.connection.stream.closed():
+            logging.warning("Connection disappeared")
+            return
         self.finish(message)
         return;
     
