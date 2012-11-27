@@ -1,6 +1,6 @@
 // Initiate global websocket object.
 // @todo: Dirty hack to send the cookie....
-var ws = new WebSocket("ws://127.0.0.1:8888/socket?user=" + cookie("user"));
+var ws = new WebSocket("ws://127.0.0.1:8888/socket");
 
 /**
  * Helper function to get the calue of a cookie. We use this to send _xsrf
@@ -32,7 +32,6 @@ $(document).ready(function() {
     });
     $("#message-input").focus();
     $('html, body').animate({scrollTop: $(document).height()}, 800);
-    //updater.poll();
     
     // Connection state should be reflacted in submit button.
     var disabled = $("form#chat-input").find("input");
@@ -79,8 +78,10 @@ function postMessage(form) {
     disabled.removeAttr("disabled");
 }
 
+updater = {}
+
 /**
- * Callback when polling receive new messages.
+ * Callback when receiving new messages.
  */
 newMessages = function (data) {
     var messages = data.messages;
@@ -103,49 +104,4 @@ showMessage = function(message) {
     $('#messsages').find(".message:last").slideDown("fast", function(){
         $('html, body').animate({scrollTop: $(document).height()}, 400);
     });
-};
-
-
-/**
- * Object implementing long polling, receiving and displaying new messages.
- */
-var updater = {
-    errorSleepTime: 500,
-    cursor: null,
-
-    /**
-     * Performs the long polling request. Is recalled when finished.
-     */
-    poll: function() {
-        var data = {"_xsrf": cookie("_xsrf")};
-        if (updater.cursor) data.cursor = updater.cursor;
-        // Send an ajax request with the cursor as payload.
-        $.ajax({
-            url: "/message",
-            data: $.param(data),
-            dataType: "json",
-            type: "GET",
-            //contentType: 'application/json',
-            timeout: 60000,
-            cache: false
-        }).done(function ( data ) {
-            if (!data.messages) {
-                console.log("Error Receiving new messages");
-                return;
-            }
-            console.log("Received new messages successfuly");
-            updater.newMessages(data);
-            updater.errorSleepTime = 500;
-            window.setTimeout(updater.poll, 0);
-        }).fail(function(jqXHR, textStatus) {
-            if (textStatus == 'timeout') {
-                console.log("Request timed out, sleeping for " + updater.errorSleepTime + " ms");
-            }
-            else {
-                updater.errorSleepTime *= 2;
-                console.log("Poll error " + textStatus + "; sleeping for " + updater.errorSleepTime + " ms");
-            }
-            window.setTimeout(updater.poll, updater.errorSleepTime);
-        });
-    },
 };
