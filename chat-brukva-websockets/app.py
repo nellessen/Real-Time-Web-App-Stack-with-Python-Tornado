@@ -9,9 +9,11 @@ from threading import Timer
 # Tornado modules.
 import tornado.ioloop
 import tornado.web
+import tornado.websocket
 import tornado.auth
 import tornado.options
 import tornado.escape
+from tornado import gen
 
 # MongoDb modules.
 from bson.objectid import ObjectId
@@ -68,102 +70,9 @@ class MainHandler(BaseHandler):
     
 
 class MessageHandler(BaseHandler):
-
-    @tornado.web.asynchronous
-    def get(self):
-        """
-        Handles get requests for long polling.
-        Expects to send a body like this:
-        {'cursor': 'MessageID of the latest message received'}
-        """
-        logging.info("Starting GET")
-        # Check authentication.
-        self._get_current_user(callback=self.get_on_auth)
-        
-    
-    def get_on_auth(self, user):
-        """
-        Callback fot checking auth in self.get().
-        """
-        logging.info("Authorized GET")
-        if not user:
-            self.finish({'error': 1, 'textStatus': 'unauthorized'})
-            return;
-        
-        # Subscribe to conversation channel.
-        self.new_message_send = False
-        self.client = brukva.Client()
-        self.client.connect()
-        self.client.subscribe('conversation')
-        self.subscribed = True
-        self.client.listen(self.on_new_messages)
-        
-        # @todo: We could check if we missed a message between pollings.
-        
-        
-    def on_new_messages(self, message):
-        """
-        Callback for listening to subscription 'conversation'
-        """
-        logging.info("on_new_messages GET")
-        # Aboart if message type is something like unsubscribe.
-        if not message.kind == "message":
-            return;
-        # Aboard if fired twice.
-        if self.new_message_send:
-            return;
-        self.new_message_send = True
-        logging.info("NEW MESSAGE")
-        logging.info(message)
-        """
-        Callback called by get() when new message is available.
-        message - a new message.
-        """
-        # Remove waiter.
-        logging.info("Removed one waiter")
-        self.client.unsubscribe('conversation')
-        self.subscribed = False
-        # Closed client connection
-        if self.request.connection.stream.closed():
-            logging.warning("Waiter disappeared")
-            return
-        # Send messages to client and finish connection.
-        self.finish(dict(messages=[tornado.escape.json_decode(message.body)]))
-        
-
-    def on_finish(self):
-        """
-        Performs cleanup after response is send.
-        """
-        logging.info("REQUEST FINISHED")
-        self.cleanup()
-        
-    
-    def on_connection_close(self):
-        """
-        Called when connection closed by client.
-        """
-        # Perform cleanup
-        logging.info("CONNECTION CLOSED")
-        self.cleanup()
-            
-        
-    def cleanup(self):
-        """
-        Frees up resource related to this request.
-        """
-        # Cleanup database connection.
-        logging.info("CLEANUP")
-        if hasattr(self, 'client'):
-            # Unsubscribe if not done yet.
-            if self.subscribed:
-                self.client.unsubscribe('conversation')
-                self.subscribed
-            # Disconnect connection after delay due to this issue:
-            # https://github.com/evilkost/brukva/issues/25 
-            t = Timer(0.1, self.client.disconnect)
-            t.start()
-        
+    """
+    Handler for message requests like creating a message.
+    """
     
     @tornado.web.asynchronous
     def post(self):
@@ -222,6 +131,105 @@ class MessageHandler(BaseHandler):
             return
         self.finish(message)
         return;
+        
+
+
+class ChatSocketHandler(tornado.websocket.WebSocketHandler):
+    """
+    Handler for dealing with websockets.
+    @todo: No authentication yet!
+    """
+
+    @gen.engine
+    def open(self):
+        """
+        Called when socket is opened. Used to subscribe to conversation.
+        """
+        # Subscribe to conversation channel.
+        self.new_message_send = False
+        self.client = brukva.Client()
+        self.client.connect()
+        self.client.subscribe('conversation')
+        self.subscribed = True
+        self.client.listen(self.on_new_messages)
+        
+    
+    def on_new_messages(self, message):
+        """
+        Callback for listening to subscription 'conversation'
+        """
+        logging.info("on_new_messages")
+        # Aboart if message type is something like unsubscribe.
+        if not message.kind == "message":
+            return;
+        # Send messages to client and finish connection.
+        self.write_message(dict(messages=[tornado.escape.json_decode(message.body)]))
+        
+    
+    def on_close(self):
+        """
+        Callback when socket is closed
+        """
+        self.cleanup()
+        
+    
+    def cleanup(self):
+        """
+        Frees up resource related to this socket.
+        """
+        # Cleanup database connection.
+        logging.info("CLEANUP")
+        if hasattr(self, 'client'):
+            # Unsubscribe if not done yet.
+            if self.subscribed:
+                self.client.unsubscribe('conversation')
+                self.subscribed = False
+            # Disconnect connection after delay due to this issue:
+            # https://github.com/evilkost/brukva/issues/25 
+            t = Timer(0.1, self.client.disconnect)
+            t.start()
+        
+    
+    def on_message(self, data):
+        """
+        Callback when new message received from socket.
+        """
+        logging.info('Got message %r', data)
+        
+        # get message data.
+        try:
+            # Parse input.
+            datadecoded = tornado.escape.json_decode(data)
+            # create new message.
+            message = dict()
+            # @todo: Set username after implementation of authentication.
+            message['from'] = "TODO"
+            messagebody = datadecoded["body"]
+            message['body'] = tornado.escape.linkify(messagebody)
+        except Exception, err:
+            # Send an error back to client.
+            self.write_message({'error': 1, 'textStatus': 'Bad input data ... ' + str(err) + data})
+            return;
+        
+        # Save message.
+        try:
+            # Generate object id as message id.
+            message["_id"] = str(ObjectId())
+            # Convert to JSON-literal.
+            message_encoded = tornado.escape.json_encode(message)
+            # Persistently store message.
+            self.application.client.rpush('conversation', message_encoded)
+            # publish message.
+            self.application.client.publish('conversation', message_encoded)
+        except Exception, err:
+            e = str(sys.exc_info()[0])
+            # Send an error back to client.
+            self.write_message({'error': 1, 'textStatus': 'Error writing to database: ' + str(err)})
+            return;
+        
+        # Send message to indicate a successful operation.
+        self.write_message(message)
+        return;
     
 
 
@@ -237,6 +245,7 @@ class Application(tornado.web.Application):
             (r"/login", LoginHandler),
             (r"/logout", LogoutHandler),
             (r"/message", MessageHandler),
+            (r"/socket", ChatSocketHandler),
         ]
         
         # Settings:
@@ -250,7 +259,7 @@ class Application(tornado.web.Application):
             # Set this to your desired database name.
             db_name = 'chat',
             # apptitle used as page title in the template.
-            apptitle = 'Chat example: Tornado, Redis, brukva, Longpolling'
+            apptitle = 'Chat example: Tornado, Redis, brukva, Websockets'
         )
         
         # Call super constructor.
