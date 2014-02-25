@@ -67,70 +67,6 @@ class MainHandler(BaseHandler):
         self.render_default("index.html", content=content, chat=1)
 
         
-    
-
-class MessageHandler(BaseHandler):
-    """
-    Handler for message requests like creating a message.
-    """
-    
-    @tornado.web.asynchronous
-    def post(self):
-        """
-        Handles post request for creating new posts.
-        Expects to send a body like this:
-        {'body': 'Message body...'}
-        """
-        # Check authentication.
-        self._get_current_user(callback=self.post_on_auth)
-        
-    
-    def post_on_auth(self, user):
-        """
-        Callback fot checking auth in self.post().
-        """
-        if not user:
-            self.finish({'error': 1, 'textStatus': 'unauthorized'})
-            return;
-        
-        # get message data from request body.
-        try:
-            # create new message.
-            message = dict()
-            message['from'] = user['name']
-            #message['id'] = str(uuid.uuid4())
-            # @todo: Validate input.
-            message['body'] = tornado.escape.linkify(self.get_argument("body"))
-            # Uncomment this line to add the port number to the body.
-            #message['body'] += " (over port " + str(tornado.options.options.port) + ")"
-        except:
-            # Send an error back to client.
-            self.finish({'error': 1, 'textStatus': 'Bad input data'})
-            return;
-        
-        # Save message.
-        try:
-            # Generate object id as message id.
-            message["_id"] = str(ObjectId())
-            # Convert to JSON-literal.
-            message_encoded = tornado.escape.json_encode(message)
-            # Persistently store message.
-            self.application.client.rpush('conversation', message_encoded)
-            # publish message.
-            self.application.client.publish('conversation', message_encoded)
-        except Exception, err:
-            e = str(sys.exc_info()[0])
-            # Send an error back to client.
-            self.finish({'error': 1, 'textStatus': 'Error writing to database: ' + str(err)})
-            return;
-        
-        # Send message to indicate a successful operation.
-        # Closed client connection
-        if self.request.connection.stream.closed():
-            logging.warning("Connection disappeared")
-            return
-        self.finish(message)
-        return;
         
 
 
@@ -244,7 +180,6 @@ class Application(tornado.web.Application):
             (r"/", MainHandler),
             (r"/login", LoginHandler),
             (r"/logout", LogoutHandler),
-            (r"/message", MessageHandler),
             (r"/socket", ChatSocketHandler),
         ]
         
