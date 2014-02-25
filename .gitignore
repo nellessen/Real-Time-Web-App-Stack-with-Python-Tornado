@@ -1,0 +1,11 @@
+*.pyc
+*.pem
+*.p12
+.idea
+.project
+.pydevproject
+conf/settings.py
+conf/mongo.credentials.conf
+conf/familonet.logrotate.conf
+conf/google-service-account.privatekey.pem
+.settings
