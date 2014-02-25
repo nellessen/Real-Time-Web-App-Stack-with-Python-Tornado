@@ -5,6 +5,7 @@ import os.path
 import logging
 import sys
 from threading import Timer
+import hashlib
 
 # Tornado modules.
 import tornado.ioloop
@@ -25,7 +26,6 @@ import brukva
 from base import BaseHandler
 from auth import LoginHandler
 from auth import LogoutHandler
-from symbol import except_clause
 
 # Define port from command line parameter.
 tornado.options.define("port", default=8888, help="run on the given port", type=int)
@@ -37,7 +37,11 @@ class MainHandler(BaseHandler):
     Main request handler for the root path.
     """
     @tornado.web.asynchronous
-    def get(self):
+    def get(self, room=None):
+        if not room:
+            self.redirect("/room/1")
+        # Set chat room as instance var (should be validated).
+        self.room = str(room)
         # Get the current user.
         self._get_current_user(callback=self.on_auth)
         
@@ -46,9 +50,8 @@ class MainHandler(BaseHandler):
         if not user:
             self.redirect("/login")
             return
-        # Retreive 50 latest messages.
-        self.application.client.lrange('conversation', -50, -1, 
-                                       self.on_conversation_find)
+        # Load 50 latest messages.
+        self.application.client.lrange(self.room, -50, -1, self.on_conversation_find)
         
     
     def on_conversation_find(self, result):
@@ -62,8 +65,7 @@ class MainHandler(BaseHandler):
         for message in result:
             messages.append(tornado.escape.json_decode(message))
         
-        content = self.render_string("messages.html", 
-                        messages=messages)
+        content = self.render_string("messages.html", messages=messages)
         self.render_default("index.html", content=content, chat=1)
 
         
@@ -73,21 +75,25 @@ class MainHandler(BaseHandler):
 class ChatSocketHandler(tornado.websocket.WebSocketHandler):
     """
     Handler for dealing with websockets.
-    @todo: No authentication yet!
+    TODO: Not proper authentication handling!
     """
 
     @gen.engine
-    def open(self):
+    def open(self, room='root'):
         """
         Called when socket is opened. Used to subscribe to conversation.
+
         """
+        # Set chat room as instance var (should be validated).
+        self.room = str(room)
         # Subscribe to conversation channel.
         self.new_message_send = False
         self.client = brukva.Client()
         self.client.connect()
-        self.client.subscribe('conversation')
+        self.client.subscribe(self.room)
         self.subscribed = True
         self.client.listen(self.on_new_messages)
+        logging.debug('New user connected to chat room ' + room)
         
     
     def on_new_messages(self, message):
@@ -98,8 +104,10 @@ class ChatSocketHandler(tornado.websocket.WebSocketHandler):
         # Aboart if message type is something like unsubscribe.
         if not message.kind == "message":
             return;
+        # Decode message
+        m = tornado.escape.json_decode(message.body)
         # Send messages to client and finish connection.
-        self.write_message(dict(messages=[tornado.escape.json_decode(message.body)]))
+        self.write_message(dict(messages=[m]))
         
     
     def on_close(self):
@@ -118,7 +126,7 @@ class ChatSocketHandler(tornado.websocket.WebSocketHandler):
         if hasattr(self, 'client'):
             # Unsubscribe if not done yet.
             if self.subscribed:
-                self.client.unsubscribe('conversation')
+                self.client.unsubscribe(self.room)
                 self.subscribed = False
             # Disconnect connection after delay due to this issue:
             # https://github.com/evilkost/brukva/issues/25 
@@ -138,8 +146,11 @@ class ChatSocketHandler(tornado.websocket.WebSocketHandler):
             datadecoded = tornado.escape.json_decode(data)
             # create new message.
             message = dict()
-            # @todo: Set username after implementation of authentication.
-            message['from'] = "TODO"
+            logging.debug(datadecoded['user'])
+            message['from'] = self.get_secure_cookie('user', str(datadecoded['user']))
+            if not message['from']:
+                logging.warning("Error: Authentication missing")
+                message['from'] = 'Guest'
             messagebody = datadecoded["body"]
             message['body'] = tornado.escape.linkify(messagebody)
         except Exception, err:
@@ -154,9 +165,9 @@ class ChatSocketHandler(tornado.websocket.WebSocketHandler):
             # Convert to JSON-literal.
             message_encoded = tornado.escape.json_encode(message)
             # Persistently store message.
-            self.application.client.rpush('conversation', message_encoded)
+            self.application.client.rpush(self.room, message_encoded)
             # publish message.
-            self.application.client.publish('conversation', message_encoded)
+            self.application.client.publish(self.room, message_encoded)
         except Exception, err:
             e = str(sys.exc_info()[0])
             # Send an error back to client.
@@ -178,9 +189,11 @@ class Application(tornado.web.Application):
         # Handlers defining the url routing.
         handlers = [
             (r"/", MainHandler),
+            (r"/room/([a-zA-Z0-9]*)$", MainHandler),
             (r"/login", LoginHandler),
             (r"/logout", LogoutHandler),
             (r"/socket", ChatSocketHandler),
+            (r"/socket/([a-zA-Z0-9]*)$", ChatSocketHandler),
         ]
         
         # Settings:

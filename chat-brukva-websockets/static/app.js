@@ -1,18 +1,18 @@
-// Initiate global websocket object.
-// @todo: Dirty hack to send the cookie....
-var ws = new WebSocket("ws://127.0.0.1:8888/socket");
-
 /**
  * Helper function to get the calue of a cookie. We use this to send _xsrf
  * token which is stored in a cookie.
  * @param name The name of the cookie.
  * @returns
  */
-
 function cookie(name) {
     var r = document.cookie.match("\\b" + name + "=([^;]*)\\b");
     return r ? r[1] : undefined;
 }
+
+// Initiate global websocket object.
+// @todo: Add user cookie for authentication.
+var ws = new WebSocket("ws://127.0.0.1:8888/socket/" + location.pathname.replace('/room/', '').replace('/', ''));
+
 
 $(document).ready(function() {
     if (!window.console) window.console = {};
@@ -24,12 +24,12 @@ $(document).ready(function() {
         return false;
     });
     // Bind pressing enter event to postMessage().
-    $("#chat-input").live("keypress", function(e) {
-        if (e.keyCode == 13) {
-            postMessage($(this));
-            return false;
-        }
-    });
+    //$("#chat-input").live("keypress", function(e) {
+    //    if (e.keyCode == 13) {
+    //        postMessage($(this));
+    //        return false;
+    //    }
+    //});
     $("#message-input").focus();
     $('html, body').animate({scrollTop: $(document).height()}, 800);
     
@@ -68,6 +68,7 @@ function postMessage(form) {
     var value = form.find("input[type=text]").val();
     var message = {body: value};
     message._xsrf = cookie("_xsrf");
+    message.user = cookie("user");
     var disabled = form.find("input");
     disabled.attr("disabled", "disabled");
     // Send message using websocket.
