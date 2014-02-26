@@ -1,42 +1,36 @@
 /**
- * Helper function to get the calue of a cookie. We use this to send _xsrf
- * token which is stored in a cookie.
- * @param name The name of the cookie.
- * @returns
+ * Initiate global websocket object.
+ * @todo: Add user cookie for authentication.
+ */
+var ws = new WebSocket("ws://127.0.0.1:8888/socket/" + location.pathname.replace('/room/', '').replace('/', ''));
+
+
+/**
+ * Helper function to get the value of a cookie.
  */
 function cookie(name) {
     var r = document.cookie.match("\\b" + name + "=([^;]*)\\b");
     return r ? r[1] : undefined;
 }
 
-// Initiate global websocket object.
-// @todo: Add user cookie for authentication.
-var ws = new WebSocket("ws://127.0.0.1:8888/socket/" + location.pathname.replace('/room/', '').replace('/', ''));
-
 
 $(document).ready(function() {
     if (!window.console) window.console = {};
     if (!window.console.log) window.console.log = function() {};
 
-    // Bin submit event to postMessage().
+    // Bind the submit event of the form input to postMessage().
     $("#chat-input").submit(function() {
         postMessage($(this));
         return false;
     });
-    // Bind pressing enter event to postMessage().
-    //$("#chat-input").live("keypress", function(e) {
-    //    if (e.keyCode == 13) {
-    //        postMessage($(this));
-    //        return false;
-    //    }
-    //});
     $("#message-input").focus();
     $('html, body').animate({scrollTop: $(document).height()}, 800);
     
     // Connection state should be reflacted in submit button.
     var disabled = $("form#chat-input").find("input");
     disabled.attr("disabled", "disabled");
-    
+
+    // Websocket callbacks:
     ws.onopen = function() {
         console.log("Connected...");
         disabled.removeAttr("disabled");
@@ -60,9 +54,9 @@ $(document).ready(function() {
     };
 });
 
+
 /**
  * Function to create a new message.
- * @param form The form beeing submitted.
  */
 function postMessage(form) {
     var value = form.find("input[type=text]").val();
@@ -79,11 +73,11 @@ function postMessage(form) {
     disabled.removeAttr("disabled");
 }
 
-updater = {}
 
 /**
  * Callback when receiving new messages.
  */
+updater = {}
 newMessages = function (data) {
     var messages = data.messages;
     if(messages.length == 0) return;
@@ -93,6 +87,7 @@ newMessages = function (data) {
         showMessage(messages[i]);
     }
 };
+
 
 /**
  * Function to add a bunch of (new) messages to the inbox.

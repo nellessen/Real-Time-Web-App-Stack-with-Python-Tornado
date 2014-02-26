@@ -4,9 +4,6 @@
 import tornado.web
 import tornado.escape
 
-# MongoDb modules.
-from bson.objectid import ObjectId
-
 # Import application modules.
 from base import BaseHandler
 
@@ -45,9 +42,9 @@ class LoginHandler(BaseHandler, tornado.auth.GoogleMixin):
                 + '<p>Fill in both fields!</p>'
                 + '<form class="form-inline" action="/login" method="get"> '
                 + '<input type="hidden" name="start_direct_auth" value="1">'
-                + '<input type="text" name="name" placeholder="Your Name" value="' + str(user["name"]) + '"> '
-                + '<input type="text" name="email" placeholder="Your Email" value="' + str(user["email"]) + '"> '
-                + '<input type="submit" class="btn" value="Sign in">'
+                + '<input class="form-control" type="text" name="name" placeholder="Your Name" value="' + str(user["name"]) + '"> '
+                + '<input class="form-control" type="text" name="email" placeholder="Your Email" value="' + str(user["email"]) + '"> '
+                + '<input type="submit" class="btn btn-default" value="Sign in">'
                 + '</form>')
                 self.render_default("index.html", content=content)
             # All data given. Log user in!
@@ -65,9 +62,9 @@ class LoginHandler(BaseHandler, tornado.auth.GoogleMixin):
             content += ('<h2>2. Direct Login</h2>' 
             + '<form class="form-inline" action="/login" method="get"> '
             + '<input type="hidden" name="start_direct_auth" value="1">'
-            + '<input type="text" name="name" placeholder="Your Name"> '
-            + '<input type="text" name="email" placeholder="Your Email"> '
-            + '<input type="submit" class="btn" value="Sign in">'
+            + '<input class="form-control" type="text" name="name" placeholder="Your Name"> '
+            + '<input class="form-control" type="text" name="email" placeholder="Your Email"> '
+            + '<input type="submit" class="btn btn-default" value="Sign in">'
             + '</form>')
             self.render_default("index.html", content=content)
 
@@ -111,8 +108,7 @@ class LoginHandler(BaseHandler, tornado.auth.GoogleMixin):
                 return
             self.redirect("/")
         
-        dbuser = self.application.client.get("user:" + user["email"], 
-                                             on_user_find)
+        dbuser = self.application.client.get("user:" + user["email"], on_user_find)
         
         
 

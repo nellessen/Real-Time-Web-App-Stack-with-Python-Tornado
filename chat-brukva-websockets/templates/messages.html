@@ -4,12 +4,13 @@
   {% end %}
 </div>
 
-<form action="" method="post" class="form-inline" id="chat-input">
-  <div class="form-actions">
-    <div class="container container-fluid">
-      <input name="body" id="message-input" type="text"/>
-      <input class="hidden-phone btn btn-primary" type="submit" value="{{ _("Post") }}"/>
-      {% module xsrf_form_html() %}
-    </div>
+<form class="form-inline" role="form" id="chat-input">
+  <div class="container container-fluid">
+  <div class="form-group">
+    <label class="sr-only" for="message-inpu">Chat Message</label>
+    <input type="text" class="form-control" name="body" id="message-input" placeholder="Chat Message">
+    {% module xsrf_form_html() %}
+  </div>
+  <button type="submit" class="btn btn-default">Post</button>
   </div>
 </form>
